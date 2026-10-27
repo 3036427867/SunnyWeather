@@ -1,14 +1,21 @@
 package com.sunnyweather.android.logic.network
 
+import android.util.Log
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import retrofit2.await
+//import retrofit2.await
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
 object SunnyWeatherNetwork {
+
+    private val weatherService= ServiceCreator.create(WeatherService::class.java)
+    suspend fun getDailyWeather(lng: String, lat: String) =
+        weatherService.getDailyWeather(lng, lat).await()
+    suspend fun getRealtimeWeather(lng: String, lat: String) =
+        weatherService.getRealtimeWeather(lng, lat).await()
 
     private val placeService= ServiceCreator.create<PlaceService>()
 
@@ -19,9 +26,17 @@ object SunnyWeatherNetwork {
             enqueue(object : Callback<T> {
                 override fun onResponse(call: Call<T>, response: Response<T>) {
                     val body=response.body()
-                    if (body!=null) continuation.resume(body)
-                    else continuation.resumeWithException(
-                        RuntimeException("response body is null"))
+                    if (body!=null) {continuation.resume(body)}
+                    else {
+//                        continuation.resumeWithException(
+//                            RuntimeException("response body is null")
+//                        )
+                        val errorText=response.errorBody()?.string()
+                        val message="request failed: url=${call.request().url()}, " +
+                                "code=${response.code()}, errorBody=$errorText"
+                        Log.e("SunnyWeatherNetwork", message)
+                        continuation.resumeWithException(RuntimeException(message))
+                    }
                 }
 
                 override fun onFailure(call: Call<T>, t: Throwable) {
